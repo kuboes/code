@@ -23,3 +23,14 @@
 ## 注意
 - root ユーザーのため `--dangerously-skip-permissions` は使えない（セキュリティで弾かれた）。テストは `--tools ""` で行った
 - node_modules はローカルの clone 内のみ。kuboes/code への push はしていない
+
+## 2026-10-31 追記（フェーズ1〜6）
+- フェーズ1続き: tool_calls ↔ tool_use 変換、ストリーミング変換、429/529/5xx フェイルオーバー、モデルピッカー — bun test 9 pass
+- フェーズ2 永続メモリ: JSONL＋markdown、検索・想起・要約 — 2 pass
+- フェーズ3 autopilot＋sandbox統合: ループ、fail-closed、監査ログ、スナップショット復元 — 4 pass
+- フェーズ4 MCP集: ローカルレジストリ、バンドル — 1 pass
+- フェーズ5 Telegram: モック Bot API 送受信 — 1 pass（Simplex は設計のみ）
+- フェーズ6 ARM: arch/Termux 判定、アセット名 — 1 pass
+- 合計 18 pass / 0 fail（`bun test phase1-openai-provider phase2-memory phase3-autopilot phase4-mcp phase5-telegram phase6-arm` で再確認済み）
+- src 本統合（第一歩）: `src/utils/model/providers.ts` に `'openai-compatible'` を追加し、`KUBOES_USE_OPENAI=1` で選択できるようにした。デフォルト動作は変わらず、`--version` は両条件で 2.1.88 を返した。Anthropic↔OpenAI 変換のクエリパスへの配線は未完了で、次の作業。
+- 依然未検証: 実 Ollama、実 Telegram、実機 Termux、TUI のキー操作、実 Anthropic API。
