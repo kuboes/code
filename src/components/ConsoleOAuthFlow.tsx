@@ -30,6 +30,9 @@ type OAuthStatus = {
   state: 'platform_setup';
 } // Show platform setup info (Bedrock/Vertex/Foundry)
 | {
+  state: 'openai_setup';
+} // kuboes: Show OpenAI-compatible API setup info
+| {
   state: 'ready_to_start';
 } // Flow started, waiting for browser to open
 | {
@@ -126,7 +129,7 @@ export function ConsoleOAuthFlow({
     });
   }, {
     context: 'Confirmation',
-    isActive: oauthStatus.state === 'platform_setup'
+    isActive: oauthStatus.state === 'platform_setup' || oauthStatus.state === 'openai_setup'
   });
 
   // Handle Enter to retry on error state
@@ -345,7 +348,7 @@ type OAuthStatusMessageProps = {
   setLoginWithClaudeAi: (value: boolean) => void;
 };
 function OAuthStatusMessage(t0) {
-  const $ = _c(51);
+  const $ = _c(60);
   const {
     oauthStatus,
     mode,
@@ -405,6 +408,9 @@ function OAuthStatusMessage(t0) {
           t6 = [t4, t5, {
             label: <Text>3rd-party platform ·{" "}<Text dimColor={true}>Amazon Bedrock, Microsoft Foundry, or Vertex AI</Text>{"\n"}</Text>,
             value: "platform"
+          }, {
+            label: <Text>OpenAI-compatible API ·{" "}<Text dimColor={true}>Ollama, OpenAI, etc. (KUBOES_OPENAI_*)</Text>{"\n"}</Text>,
+            value: "openai"
           }];
           $[5] = t6;
         } else {
@@ -417,6 +423,11 @@ function OAuthStatusMessage(t0) {
                 logEvent("tengu_oauth_platform_selected", {});
                 setOAuthStatus({
                   state: "platform_setup"
+                });
+              } else if (value_0 === "openai") {
+                logEvent("tengu_oauth_openai_selected", {});
+                setOAuthStatus({
+                  state: "openai_setup"
                 });
               } else {
                 setOAuthStatus({
@@ -504,6 +515,53 @@ function OAuthStatusMessage(t0) {
           t8 = $[19];
         }
         return t8;
+      }
+    case "openai_setup":
+      {
+        // kuboes: OpenAI-compatible setup. No OAuth here: the provider is
+        // selected purely by environment variables, then the CLI restarts
+        // into the OpenAI query path (kuboesOpenAI.ts fetch adapter).
+        let t1;
+        if ($[51] === Symbol.for("react.memo_cache_sentinel")) {
+          t1 = <Text bold={true}>Using an OpenAI-compatible API</Text>;
+          $[51] = t1;
+        } else {
+          t1 = $[51];
+        }
+        let t2;
+        let t3;
+        let t4;
+        if ($[52] === Symbol.for("react.memo_cache_sentinel")) {
+          t2 = <Text>Set these environment variables, then restart Claude Code:</Text>;
+          t3 = <Text>· KUBOES_OPENAI_BASE_URL (e.g. http://localhost:11434/v1 for Ollama, or https://api.openai.com/v1)</Text>;
+          t4 = <Text>· KUBOES_OPENAI_API_KEY (optional for local Ollama; otherwise your key)</Text>;
+          $[52] = t2;
+          $[53] = t3;
+          $[54] = t4;
+        } else {
+          t2 = $[52];
+          t3 = $[53];
+          t4 = $[54];
+        }
+        let t5;
+        let t6;
+        if ($[55] === Symbol.for("react.memo_cache_sentinel")) {
+          t5 = <Text>· KUBOES_OPENAI_MODEL (required: the model your server serves, e.g. llama3.1 or gpt-4o-mini)</Text>;
+          t6 = <Text>Thinking, prompt caching and Anthropic betas are not translated and are ignored for this provider. Tool use works via OpenAI function calling.</Text>;
+          $[55] = t5;
+          $[56] = t6;
+        } else {
+          t5 = $[55];
+          t6 = $[56];
+        }
+        let t7;
+        if ($[57] === Symbol.for("react.memo_cache_sentinel")) {
+          t7 = <Box flexDirection="column" gap={1} marginTop={1}>{t1}<Box flexDirection="column" gap={1}>{t2}{t3}{t4}{t5}{t6}<Box marginTop={1}><Text dimColor={true}>Press <Text bold={true}>Enter</Text> to go back to login options.</Text></Box></Box></Box>;
+          $[57] = t7;
+        } else {
+          t7 = $[57];
+        }
+        return t7;
       }
     case "waiting_for_login":
       {
