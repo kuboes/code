@@ -1,5 +1,14 @@
-# 本統合の状態（2026-10-31）
+# 本統合の状態（2026-11-01）
 - 済み: `kuboes/phase1-openai-provider/`〜`kuboes/phase6-arm/` の自作アダプタ群（bun test 18 pass）。
 - 済み（第一歩）: `src/utils/model/providers.ts` に `'openai-compatible'` を追加、`KUBOES_USE_OPENAI=1` で選択可。デフォルトは firstParty のまま。
-- 未済: `src/services/api/` のクエリパスへ translate.ts を配線すること、ModelPicker への OpenAI モデル一覧表示、実 Ollama / 実 Telegram / 実機 Termux での検証。
-- 注意: この第一歩だけでは OpenAI 互換モデルでの実際の問い合わせはまだ動かない。配線なしに「対応済み」とは言わないこと。
+- 済み（2026-11-01、Termux実機で検証）:
+  - `src/services/api/kuboesOpenAI.ts`（新規）＋ `src/services/api/client.ts` 配線: Anthropic SDKのfetchを差し替え、Anthropic形式をOpenAI chat completionsへ翻訳（system/tools/tool_use/tool_result、ストリーミングSSE翻訳、modelは `KUBOES_OPENAI_MODEL` で置換）。単体テスト `kuboesOpenAI.test.ts` 8件 pass（VM・Termuxとも）。
+  - `src/components/ConsoleOAuthFlow.tsx`: 初回ログイン選択に4番目「OpenAI-compatible API · Ollama, OpenAI, etc. (KUBOES_OPENAI_*)」を追加、説明画面（KUBOES_OPENAI_BASE_URL / API_KEY / MODEL、thinking・prompt caching・betasは未翻訳で無視）を表示。Termuxの疑似端末＋キー入力で、選択→説明画面→Enterで戻る、まで確認。
+  - `src/components/LogoV2/WelcomeV2.tsx`: 端末幅が58列未満ならアートを出さず1行表示に。50列で崩れず、80列でアート表示のまま（Termuxで確認）。
+  - `src/components/StructuredDiff/colorDiff.ts`＋`scripts/setup.mjs`: color-diff-napiスタブが `{}` で `new ColorDiff` が落ちる問題を修正（typeof functionチェックで純JSフォールバックへ、スタブはrender()がnullを返すクラス化）。TermuxでWelcome＋サンプルdiffまで落ちずに表示されることを確認。シンタックスハイライトはフォールバック表示になる。
+  - `start.sh`: `ANTHROPIC_API_KEY` 必須ゲートを緩和。`KUBOES_OPENAI_BASE_URL` か `KUBOES_USE_OPENAI` があれば通り、未設定時は `ANTHROPIC_API_KEY` を `KUBOES_OPENAI_API_KEY` から補完。OpenAI時は `DISABLE_PROMPT_CACHING` 等を有効化。
+  - `src/utils/model/modelStrings.ts`: `ALL_MODEL_CONFIGS` に `openai-compatible` の項目が無く、デフォルトモデル文字列がundefinedになって `getMainLoopModel()` が `undefined.trim` で落ち、-pモードがWebSearchTool.isEnabled()でハングする問題を修正。未知のプロバイダはfirstPartyの文字列にフォールバック（クエリ時にアダプタが `KUBOES_OPENAI_MODEL` に置換するため、firstParty文字列がOpenAI側に送られることはない）。
+  - `-p` 問い合わせ（Termux、モックOpenAIサーバ相手）: `--tools ""` あり・なしとも `hello-mock-openai` を返却。Anthropicモック経路の回帰も `hello-mock` で確認。
+- 注意: デフォルトモデルは3P用Sonnet 4.5で、上流の非推奨警告（2026-11-30 EOL）が -p 時に2回出る。これは上流の警告で、本変更の不具合ではない。
+- 未済: 実Ollama / 実OpenAI互換サーバ（Agnes等、実キーでの問い合わせは未検証）、ModelPickerへのOpenAIモデル一覧表示、実Telegram / 実機での長時間運用。
+- 注意: この状態で「OpenAI互換対応済み」と言う場合は、モック＋TUI選択までの検証範囲であることを添えること。
