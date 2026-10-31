@@ -24,8 +24,20 @@ const MODEL_KEYS = Object.keys(ALL_MODEL_CONFIGS) as ModelKey[]
 
 function getBuiltinModelStrings(provider: APIProvider): ModelStrings {
   const out = {} as ModelStrings
+  // kuboes: 'openai-compatible' has no entries in ALL_MODEL_CONFIGS
+  // (firstParty/bedrock/vertex/foundry only). Without a fallback every
+  // default model string is undefined and getMainLoopModel() crashes
+  // in parseUserSpecifiedModel() (undefined.trim), which hangs -p mode
+  // in WebSearchTool.isEnabled(). Fall back to firstParty IDs: the
+  // OpenAI fetch adapter substitutes KUBOES_OPENAI_MODEL at query time,
+  // so these IDs are never sent to the OpenAI server.
+  const effectiveProvider = (
+    ALL_MODEL_CONFIGS[MODEL_KEYS[0]] as Record<string, unknown>
+  )[provider]
+    ? (provider as 'firstParty' | 'bedrock' | 'vertex' | 'foundry')
+    : 'firstParty'
   for (const key of MODEL_KEYS) {
-    out[key] = ALL_MODEL_CONFIGS[key][provider]
+    out[key] = ALL_MODEL_CONFIGS[key][effectiveProvider]
   }
   return out
 }
