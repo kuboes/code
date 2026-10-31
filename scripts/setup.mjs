@@ -137,10 +137,13 @@ export default {};
 
   // NOTE: @alcalzone/ansi-tokenize is installed via npm (required for Ink rendering)
 
+  // kuboes patch: stub must be constructible. Plain objects made
+  // `new ColorDiff(...)` throw "Object is not a constructor" in the TUI.
+  // render() returning null makes callers use their pure-JS fallbacks.
   'color-diff-napi': `
-export const ColorDiff = {};
-export const ColorFile = {};
-export const getSyntaxTheme = () => ({});
+export class ColorDiff { render() { return null; } }
+export class ColorFile { render() { return null; } }
+export const getSyntaxTheme = () => ({ theme: '', source: null });
 export default {};
 `,
 
