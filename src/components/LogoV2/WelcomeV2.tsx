@@ -2,10 +2,24 @@ import { c as _c } from "react/compiler-runtime";
 import React from 'react';
 import { Box, Text, useTheme } from 'src/ink.js';
 import { env } from '../../utils/env.js';
+import { useTerminalSize } from '../../hooks/useTerminalSize.js';
 const WELCOME_V2_WIDTH = 58;
 export function WelcomeV2() {
   const $ = _c(35);
   const [theme] = useTheme();
+  // kuboes: the welcome art is a fixed 58-column box. On a narrower
+  // terminal (e.g. a phone in portrait, ~50 columns) Ink wraps it and
+  // the art collapses into scattered fragments. Render a compact
+  // one-line welcome instead of the art below that width.
+  let columns = 80;
+  try {
+    columns = useTerminalSize().columns;
+  } catch {
+    columns = 80;
+  }
+  if (columns > 0 && columns < WELCOME_V2_WIDTH) {
+    return <Box><Text><Text color="claude">{"Welcome to Claude Code"} </Text><Text dimColor={true}>v{MACRO.VERSION}</Text></Text></Box>;
+  }
   if (env.terminal === "Apple_Terminal") {
     let t0;
     if ($[0] !== theme) {
