@@ -22,16 +22,31 @@ export function getColorModuleUnavailableReason(): ColorModuleUnavailableReason 
   return null
 }
 
+// kuboes patch (Termux / source-run): the setup script stubs color-diff-napi
+// with plain objects (ColorDiff = {}). That is not a constructor, so
+// `new ColorDiff(...)` in StructuredDiff.tsx / HighlightedCode.tsx throws
+// "Object is not a constructor". Treat a non-function export as unavailable
+// so callers fall back to StructuredDiffFallback / HighlightedCodeFallback
+// instead of crashing. The real NAPI module exports classes, so this
+// check is a no-op when it is present.
+function isColorModuleUsable(): boolean {
+  return typeof ColorDiff === 'function' && typeof ColorFile === 'function'
+}
+
 export function expectColorDiff(): typeof ColorDiff | null {
-  return getColorModuleUnavailableReason() === null ? ColorDiff : null
+  return getColorModuleUnavailableReason() === null && isColorModuleUsable()
+    ? ColorDiff
+    : null
 }
 
 export function expectColorFile(): typeof ColorFile | null {
-  return getColorModuleUnavailableReason() === null ? ColorFile : null
+  return getColorModuleUnavailableReason() === null && isColorModuleUsable()
+    ? ColorFile
+    : null
 }
 
 export function getSyntaxTheme(themeName: string): SyntaxTheme | null {
-  return getColorModuleUnavailableReason() === null
+  return getColorModuleUnavailableReason() === null && isColorModuleUsable()
     ? nativeGetSyntaxTheme(themeName)
     : null
 }
