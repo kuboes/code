@@ -14,8 +14,11 @@ import { getUserAgent } from 'src/utils/http.js'
 import { getSmallFastModel } from 'src/utils/model/model.js'
 import {
   getAPIProvider,
+  getOpenAIConfig,
   isFirstPartyAnthropicBaseUrl,
+  isOpenAICompatibleProvider,
 } from 'src/utils/model/providers.js'
+import { createOpenAIFetch } from 'src/services/api/kuboesOpenAI.js'
 import { getProxyFetchOptions } from 'src/utils/proxy.js'
 import {
   getIsNonInteractiveSession,
@@ -295,6 +298,29 @@ export async function getAnthropicClient({
     }
     // we have always been lying about the return type - this doesn't support batching or models
     return new AnthropicVertex(vertexArgs) as unknown as Anthropic
+  }
+
+  // kuboes: OpenAI-compatible provider. The Anthropic SDK client is kept
+  // so all query code is unchanged; kuboesOpenAI.ts translates each
+  // request to OpenAI chat completions and each response back to
+  // Anthropic shape at the fetch layer. No thinking, prompt caching or
+  // Anthropic betas are translated (they are stripped by the adapter).
+  if (isOpenAICompatibleProvider()) {
+    const openaiConfig = getOpenAIConfig()
+    if (!openaiConfig) {
+      throw new Error(
+        'OpenAI-compatible provider selected but no base URL is set. ' +
+          'Set KUBOES_OPENAI_BASE_URL (e.g. http://localhost:11434/v1).',
+      )
+    }
+    const openaiClientConfig: ConstructorParameters<typeof Anthropic>[0] = {
+      ...ARGS,
+      apiKey: openaiConfig.apiKey || apiKey || getAnthropicApiKey(),
+      baseURL: openaiConfig.baseUrl,
+      fetch: createOpenAIFetch(openaiConfig),
+      ...(isDebugToStdErr() && { logger: createStderrLogger() }),
+    }
+    return new Anthropic(openaiClientConfig)
   }
 
   // Determine authentication method based on available tokens
