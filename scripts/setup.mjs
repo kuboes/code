@@ -11,9 +11,10 @@
  */
 
 import { execSync, spawnSync } from 'child_process';
-import { existsSync, mkdirSync, writeFileSync, readFileSync, symlinkSync, chmodSync, cpSync } from 'fs';
+import { existsSync, mkdirSync, writeFileSync, readFileSync, symlinkSync, chmodSync, cpSync, readdirSync, rmSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { homedir } from 'os';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
@@ -27,7 +28,9 @@ const err = (msg) => console.error(`\x1b[31m  ✗\x1b[0m ${msg}`);
 // ─── Step 1: Check Bun ───────────────────────────────────────────────
 log('Checking Bun runtime...');
 
-const bunPath = join(process.env.HOME, '.bun', 'bin', 'bun');
+// HOME is unset on Windows (USERPROFILE is used instead).
+const HOME = process.env.HOME || process.env.USERPROFILE || homedir();
+const bunPath = join(HOME, '.bun', 'bin', process.platform === 'win32' ? 'bun.exe' : 'bun');
 let hasBun = false;
 try {
   const result = spawnSync('bun', ['--version'], { encoding: 'utf8' });
@@ -248,11 +251,13 @@ if (!existsSync(rgVendorDir)) {
   try {
     const tmpDir = join(ROOT, '.tmp-rg-setup');
     mkdirSync(tmpDir, { recursive: true });
-    execSync(`npm pack @anthropic-ai/claude-code --pack-destination ${tmpDir}`, {
+    execSync(`npm pack @anthropic-ai/claude-code --pack-destination "${tmpDir}"`, {
       cwd: tmpDir, stdio: 'pipe'
     });
-    const tgz = execSync(`ls ${tmpDir}/anthropic-ai-claude-code-*.tgz`, { encoding: 'utf8' }).trim();
-    execSync(`tar -xzf ${tgz} -C ${tmpDir}`, { stdio: 'pipe' });
+    // `ls` / `rm -rf` are not available in cmd/PowerShell on Windows.
+    const tgzName = readdirSync(tmpDir).find(f => /^anthropic-ai-claude-code-.*\.tgz$/.test(f));
+    if (!tgzName) throw new Error('packed tarball not found');
+    execSync(`tar -xzf "${join(tmpDir, tgzName)}" -C "${tmpDir}"`, { stdio: 'pipe' });
 
     const srcRg = join(tmpDir, 'package/vendor/ripgrep');
     if (existsSync(srcRg)) {
@@ -268,10 +273,12 @@ if (!existsSync(rgVendorDir)) {
         if (existsSync(rgBin)) chmodSync(rgBin, 0o755);
       }
       ok('Ripgrep binaries installed');
+    } else {
+      warn('npm tarball no longer ships vendor/ripgrep; using system rg if present');
     }
 
     // Cleanup
-    execSync(`rm -rf ${tmpDir}`, { stdio: 'pipe' });
+    rmSync(tmpDir, { recursive: true, force: true });
   } catch (e) {
     warn(`Could not download ripgrep: ${e.message}`);
     warn('Grep/search features may not work. Install rg manually: https://github.com/BurntSushi/ripgrep');

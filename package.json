@@ -6,7 +6,9 @@
   "scripts": {
     "setup": "node scripts/setup.mjs",
     "start": "bun src/entrypoints/cli.tsx",
-    "cli": "bun src/entrypoints/cli.tsx"
+    "cli": "bun src/entrypoints/cli.tsx",
+    "test": "bun test kuboes src",
+    "test:e2e": "node scripts/test-e2e.mjs"
   },
   "dependencies": {
     "@alcalzone/ansi-tokenize": "^0.3.0",

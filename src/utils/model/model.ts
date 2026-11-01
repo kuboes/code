@@ -23,7 +23,7 @@ import { getModelStrings, resolveOverriddenModel } from './modelStrings.js'
 import { formatModelPricing, getOpus46CostTier } from '../modelCost.js'
 import { getSettings_DEPRECATED } from '../settings/settings.js'
 import type { PermissionMode } from '../permissions/PermissionMode.js'
-import { getAPIProvider } from './providers.js'
+import { getAPIProvider, isOpenAICompatibleProvider } from './providers.js'
 import { LIGHTNING_BOLT } from '../../constants/figures.js'
 import { isModelAllowed } from './modelAllowlist.js'
 import { type ModelAlias, isModelAlias } from './aliases.js'
@@ -331,7 +331,23 @@ export function isOpus1mMergeEnabled(): boolean {
   return true
 }
 
+/**
+ * kuboes: with the OpenAI-compatible provider the model actually served is
+ * KUBOES_OPENAI_MODEL. Showing the firstParty fallback name ("Haiku 4.5")
+ * would claim a model that is never called.
+ */
+function openAICompatibleModelLabel(): string | null {
+  if (!isOpenAICompatibleProvider()) {
+    return null
+  }
+  return process.env.KUBOES_OPENAI_MODEL || 'OpenAI-compatible'
+}
+
 export function renderModelSetting(setting: ModelName | ModelAlias): string {
+  const openaiLabel = openAICompatibleModelLabel()
+  if (openaiLabel) {
+    return openaiLabel
+  }
   if (setting === 'opusplan') {
     return 'Opus Plan'
   }
@@ -554,6 +570,10 @@ export function isLegacyModelRemapEnabled(): boolean {
 }
 
 export function modelDisplayString(model: ModelSetting): string {
+  const openaiLabel = openAICompatibleModelLabel()
+  if (openaiLabel) {
+    return openaiLabel
+  }
   if (model === null) {
     if (process.env.USER_TYPE === 'ant') {
       return `Default for Ants (${renderDefaultModelSetting(getDefaultMainLoopModelSetting())})`

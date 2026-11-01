@@ -12,3 +12,42 @@
 - 注意: デフォルトモデルは3P用Sonnet 4.5で、上流の非推奨警告（2026-11-30 EOL）が -p 時に2回出る。これは上流の警告で、本変更の不具合ではない。
 - 未済: 実Ollama / 実OpenAI互換サーバ（Agnes等、実キーでの問い合わせは未検証）、ModelPickerへのOpenAIモデル一覧表示、実Telegram / 実機での長時間運用。
 - 注意: この状態で「OpenAI互換対応済み」と言う場合は、モック＋TUI選択までの検証範囲であることを添えること。
+
+## 2026-11-01 追記（品質・検証・ドキュメント）
+
+### 直した不具合
+| 症状 | 原因 | 修正 |
+|---|---|---|
+| `node scripts/setup.mjs` が Windows で即クラッシュ | `process.env.HOME` が未定義 | `os.homedir()` / `USERPROFILE` へフォールバック、`bun.exe` 名、`ls` / `rm -rf` を Node API に置換 |
+| 検索・Grep が何も返さない | npm tarball が `vendor/ripgrep` を同梱しなくなり、`src/utils/vendor/ripgrep/x64-win32/rg.exe` が存在しない | `src/utils/ripgrep.ts` で同梱バイナリが無い場合にシステムの `rg` へフォールバック |
+| TUI が `Haiku 4.5` と表示（実際は OpenAI 互換モデル） | `modelStrings` が firstParty のモデル名へフォールバック | `renderModelSetting` / `modelDisplayString` が `KUBOES_OPENAI_MODEL` を表示 |
+
+### 検証マトリクス
+| 項目 | 環境 | 結果 |
+|---|---|---|
+| `bun run test` | Windows / Bun 1.3.14 | 47 pass / 3 skip / 0 fail |
+| `-p`（OpenAI 互換） | `localhost:8080` Ornith-1.5-35B-A3B-NVFP4 | `local-ok` を返却 |
+| Grep ツール | 同上（ツール有効） | 2 ファイル一致 |
+| TUI 起動・モデル表示 | Windows Terminal | `Ornith-1.5-35B-A3B-NVFP4` を表示 |
+| TUI 入力・`/status` 候補表示 | Windows Terminal | 表示確認（実行結果の中身は未記録） |
+| `-p`（Agnes） | Agnes AI | 未検証（キー未投入） |
+| Termux 実機 | Nothing Phone (2a) | 今回は未実施（既存記録のみ） |
+
+### テストの構成
+- `src/services/api/kuboesOpenAI.test.ts`（17）: 変換、ストリーム、env 優先順位
+- `src/services/api/kuboesOpenAI.fetch.test.ts`（4）: モック HTTP サーバ相手の往復とエラー変換
+- `src/utils/model/providers.test.ts`（8）: プロバイダ選択の優先順位
+- `kuboes/e2e/agnes.e2e.test.ts`（3）: `KUBOES_E2E=1` のときだけ実行。届かない/認証エラーは SKIP
+- 既存 `kuboes/phase*`（26）は変更なし
+
+### 実行方法
+- `bun run test`（通常）
+- `bun run test:e2e`（Agnes の env を入れた状態で。PowerShell でも動く）
+
+### 既知の残り
+- 実 Agnes の疎通（キーを入れて `bun run test:e2e`）
+- TUI `/status` の内容記録
+- ModelPicker への OpenAI モデル一覧表示
+- opencode v1 との差分比較（未実施）
+- `-p` 実行時の上流 EOL 警告 2 回（未修正）
+- Bun 1.3.14 とリポジトリ想定 1.4.4 の差異

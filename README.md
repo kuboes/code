@@ -102,6 +102,53 @@ bun src/entrypoints/cli.tsx --dangerously-skip-permissions
 
 ---
 
+## OpenAI-Compatible Providers
+
+kuboes/code can talk to any OpenAI-compatible `/v1/chat/completions` server
+(Ollama, llama.cpp, LM Studio, vLLM, Agnes AI, ...). Set the three `KUBOES_OPENAI_*`
+variables and the Anthropic SDK is pointed at a translating fetch adapter; nothing
+else changes.
+
+| Variable | Description |
+|---|---|
+| `KUBOES_USE_OPENAI` | `1` forces the OpenAI-compatible provider (also implied by `KUBOES_OPENAI_BASE_URL`) |
+| `KUBOES_OPENAI_BASE_URL` | Server base URL including `/v1` (e.g. `http://localhost:8080/v1`) |
+| `KUBOES_OPENAI_API_KEY` | API key, sent as `Authorization: Bearer <key>` |
+| `KUBOES_OPENAI_MODEL` | Model name the server serves. Required when the requested model is a Claude name |
+
+```bash
+# Agnes AI
+export KUBOES_USE_OPENAI=1
+export KUBOES_OPENAI_BASE_URL=https://apihub.agnes-ai.com/v1
+export KUBOES_OPENAI_API_KEY=...
+export KUBOES_OPENAI_MODEL=agnes-2.5-flash
+export DISABLE_PROMPT_CACHING=1
+bun src/entrypoints/cli.tsx -p "Reply with exactly: ok"
+```
+
+The welcome screen and `/status` show `KUBOES_OPENAI_MODEL`, not the first-party
+model name. Prompt caching, thinking blocks and Anthropic betas are not forwarded.
+
+Verified with a local OpenAI-compatible server (`localhost:8080`,
+`Ornith-1.5-35B-A3B-NVFP4`): `-p` replies, the Grep tool works, and the TUI renders
+the correct model label. Agnes AI itself is covered by gated e2e tests — see
+`kuboes/INTEGRATION-STATUS.md`.
+
+---
+
+## Tests
+
+```bash
+bun run test       # unit + integration (kuboes/ and src/), no network
+bun run test:e2e   # adds the real-API tests (needs the KUBOES_OPENAI_* vars above)
+```
+
+The e2e tests skip themselves with a `[agnes e2e] SKIP: ...` line when the
+endpoint is unreachable or the key is rejected, so a missing network never fails
+the suite.
+
+---
+
 ## Status
 
 | Feature | Status |
