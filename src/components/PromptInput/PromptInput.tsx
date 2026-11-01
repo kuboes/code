@@ -981,6 +981,9 @@ function PromptInput({
   const setSuggestionsState = useCallback((updater: typeof suggestionsState | ((prev: typeof suggestionsState) => typeof suggestionsState)) => {
     setSuggestionsStateRaw(prev => typeof updater === 'function' ? updater(prev) : updater);
   }, []);
+  // Enter is delivered to the text input before useTypeahead's key handler
+  // runs, so the accept-selection callback is reached through a ref.
+  const acceptSuggestionRef = useRef<(() => void) | null>(null);
   const onSubmit = useCallback(async (inputParam: string, isSubmittingSlashCommand = false) => {
     inputParam = inputParam.trimEnd();
 
@@ -1072,8 +1075,10 @@ function PromptInput({
     // For directory suggestions, allow submission (Tab is used for completion)
     const hasDirectorySuggestions = suggestionsState.suggestions.length > 0 && suggestionsState.suggestions.every(s => s.description === 'directory');
     if (suggestionsState.suggestions.length > 0 && !isSubmittingSlashCommand && !hasDirectorySuggestions) {
-      logForDebugging(`[onSubmit] early return: suggestions showing (count=${suggestionsState.suggestions.length})`);
-      return; // Don't submit, user needs to clear suggestions first
+      // Accept the highlighted suggestion (default: first) instead of
+      // dropping Enter — the menu is open, so the user meant to pick one.
+      acceptSuggestionRef.current?.();
+      return;
     }
 
     // Log suggestion outcome if one exists
@@ -1108,7 +1113,8 @@ function PromptInput({
     selectedSuggestion,
     commandArgumentHint,
     inlineGhostText,
-    maxColumnWidth
+    maxColumnWidth,
+    handleEnter: acceptSuggestion
   } = useTypeahead({
     commands,
     onInputChange: trackAndSetInput,
@@ -1124,6 +1130,7 @@ function PromptInput({
     markAccepted,
     onModeChange
   });
+  acceptSuggestionRef.current = acceptSuggestion;
 
   // Track if prompt suggestion should be shown (computed later with terminal width).
   // Hidden in teammate view — suggestion is leader-context only.
